@@ -1,0 +1,158 @@
+################READIND THE PNR INPUT FILES###########################
+create_lib -technology /home/deva/ICC2_28NM_TECH2/tsmcn28_9lm4X2Yget2RUTRDL.tf -ref_libs {/home/deva/ICC2_28NM_TECH2/tcbn28hpcplusbwp30p140hvt.ndm /home/deva/ICC2_28NM_TECH2/ts1n28hpcpuhdhvtb2048x129m4swbso_170a.ndm /home/deva/ICC2_28NM_TECH2/tsdn28hpcpuhdb4096x33m4mwa_170a.ndm} rp_top_top.ndm
+read_verilog /proj1/pd/users/deva/high_freq_rp_top/rp_top_top.v -top rp_top_top
+#  scan defs also should be read for the project
+
+
+###################### CREATING THE CORNERS ##################################
+#before getting into floorplan create the corners for the design like rc corners
+
+
+##########################INITIALIZING THE FLOORPLAN #########################
+#bring the metal layers ans set the horizantal and vertical
+set_attribute [get_layers {M1 M3 M5 M7 M9}] routing_direction vertical
+set_attribute [get_layers {M2 M4 M6 M8 AP}] routing_direction horizontal
+
+
+#initilizATION OF FLOORPLAN
+initialize_floorplan -core_offset 10 -core_utilization 0.6 -side_ratio {2 1} -flip_first_row true
+
+##Placement blockages by using this commands 
+#create_placement_blockage -type hard -boundary {{1003.04 20.1} {1380 321.8}} -name PB_HARD1
+##Soft blockages in channel regions
+#create_placement_blockage -type soft -boundary {{1180 386.2} {1220 709}} -name PB_SOFT1
+
+
+#get_cells -physical_context -filter "is_hard_macro==true"
+
+#KEEPING THE MACRO HALO(KEEPOUT MARGIN )
+create_keepout_margin -type hard -outer {2 2 5 2} [get_cells -filter "is_hard_macro==true"]
+
+#after placing the macros add boundary cells(left nd right boundary cells)
+#you can get the boundary cells by ###get_lib_cells *BOU*
+# before palcing the boundary cells get the boundary cells from lib file by using 
+# get_lib_cell *BOUND*
+create_boundary_cells -left_boundary_cell tcbn28hpcplusbwp30p140hvt/BOUNDARY_LEFTBWP30P140 -right_boundary_cell tcbn28hpcplusbwp30p140hvt/BOUNDARY_RIGHTBWP30P140 -prefix boundary_cells
+
+
+####   PLACING the TAP_CELLS   ###########################
+create_tap_cells -lib_cell TAPCELLBWP30P140 -distance 30 -no_1x -pattern stagger -prefix Welltap -skip_fixed_cells
+
+#CREATING THE PIN GUIDE AND PLACING THE PINS 
+create_pin_guide -name in -boundary {{386 0} {637 9.8}} [get_ports -filter "direction==in"]
+create_pin_guide -name out -boundary {{386 524.5} {637 534}} [get_ports -filter "direction==out"]
+place_pins -ports [get_ports -filter "direction==in"]
+place_pins -ports [get_ports -filter "direction==out"]
+
+##check the pin placement is correct or not 
+#checK_pin_placement
+
+#SAVING THE BLOCKS 
+save_block -as rptoptop
+
+#LEGALLITY CHECKS 
+#check_legality
+#check_floorplan_rules
+
+###############################################################################################################
+   
+#creating the net instance 
+#create_net is not that manditary because connect_pg_net will create nets for power and ground but has to becreated 
+
+create_net -power VDD
+create_net -ground VSS
+
+#creating the port for vdd and vss 
+#create_port -port_type power -direction in VDD
+#create_port -port_type ground -direction in VSS
+
+#creating the connection for VDD and VSS pins of cells  from M1 wire that we created from pg 
+connect_pg_net -net vdd [get_pins -physical_context */VDD]
+connect_pg_net -net vss [get_pins -physical_context */VSS]
+
+                                  ####$$$$$$$$$$$$$##########POWERPLAN####$$$$$$$$$$$##########
+#setting the core to divide in no of parts and to prodess the data 
+set_host_options -max_cores 8
+
+#To disable via creation during compile pg
+set_app_options -name plan.pgroute.disable_via_creation -value true
+
+##### Mostly powerplan script(DEF) will be given from the top level so no need to worry 
+###   But for script learning i pasted here
+
+###Power planning
+set_host_options -max_cores 8
+puts "USER_INFO: ####----------------------Start of PG insertion--------------------------------####"
+#To disable via creation during compile pg
+set_app_options -name plan.pgroute.disable_via_creation -value true
+###To create M1 rails
+#create_pg_std_cell_conn_pattern rail_pattern -layers M1
+create_pg_std_cell_conn_pattern rail_pattern -layers M1 -rail_width 0.15
+set_pg_strategy M1_rails -core -pattern {{name: rail_pattern} {nets: VDD VSS}}
+###Define PG mesh for M5 to M7 layers (only in core region)
+create_pg_mesh_pattern m5tom7_mesh_pattern -layers {{{vertical_layer: M5} {width: 0.45} {spacing: minimum} {pitch: 5.0} {offset: 0.6}} \
+					     {{horizontal_layer: M6} {width: 0.45} {spacing: minimum} {pitch: 5.0} {offset: 0.6}} \
+					     {{vertical_layer: M7} {width: 0.62} {spacing: minimum} {pitch: 3.0} {offset: 0.6}}}
+set_pg_strategy PG_mesh -core -pattern {{name: m5tom7_mesh_pattern} {nets: VDD VSS}} -extension {{layers: M5} {stop: 0.2}}
+##Define PG mesh for M8 & M9 (extended till die boundary, assuming they need to be aligned at top)
+create_pg_mesh_pattern m8m9_mesh_pattern -layers {{{horizontal_layer: M8} {width: 1.52} {spacing: minimum} {pitch: 6.0} {offset: 3.2}} \
+					     	  {{vertical_layer: M9} {width: 3.0} {spacing: minimum} {pitch: 7.3} {offset: 3.48}}}
+set_pg_strategy M8M9PG_mesh -design_boundary -pattern {{name: m8m9_mesh_pattern} {nets: VDD VSS}} -extension {{stop: design_boundary_and_generate_pin}}
+##
+compile_pg -strategies {M8M9PG_mesh PG_mesh M1_rails}
+
+
+###Create PG vias
+set layer_pairs [list {M9 M8 VIA89_1cut} {M8 M7 VIA78_1cut} {M7 M6 VIA67_1cut} {M6 M5 VIA56_1cut}]
+foreach lyr_pr $layer_pairs {
+set frm_lyr [lindex $lyr_pr 0]
+set to_lyr [lindex $lyr_pr 1]
+set via_mstr [lindex $lyr_pr 2]
+puts "$via_mstr"
+puts "USER_INFO: ####----------------------Creating PG vias between $frm_lyr & $to_lyr------------------------####"
+#create_pg_vias -from_layers $frm_lyr -to_layers $to_lyr -nets {v08 vss} -within_bbox [get_attribute [current_block] bbox] -via_masters $via_mstr
+create_pg_vias -from_layers $frm_lyr -to_layers $to_lyr -nets {VDD VSS} -within_bbox [get_attribute [current_block] bbox] 
+}
+##Creating pg vias between M1 & M5
+set_pg_via_master_rule via1_rule -contact_code VIA12_1cut -cut_spacing 0.1 -via_array_dimension {3 1}
+set_pg_via_master_rule via2_rule -contact_code VIA23_1cut -cut_spacing 0.1 -via_array_dimension {3 1}
+set_pg_via_master_rule via3_rule -contact_code VIA34_1cut -cut_spacing 0.1 -via_array_dimension {3 1}
+set_pg_via_master_rule via4_rule -contact_code VIA45_1cut -cut_spacing 0.1 -via_array_dimension {3 1}
+create_pg_vias -from_layers M5 -to_layers M1 -nets {VDD VSS} -within_bbox [get_attribute [current_block] bbox] -via_masters {via1_rule via2_rule  via3_rule via4_rule}
+puts "USER_INFO: ####----------------------End of PG insertion--------------------------------####"
+
+#Via over macro pins
+set_pg_via_master_rule via4_macro_rule -contact_code VIA45_1cut -cut_spacing 0.1 -via_array_dimension {3 2}
+create_pg_vias -from_types macro_pin -from_layers M4 -to_types stripe -to_layers M5 -nets {VDD VSS} -via_masters {via4_macro_rule}
+
+#After completing the powerplan place the tap cells
+ 
+create_tap_cells -lib_cell TAPCELLBWP30P140 -distance 30 -no_1x -pattern stagger -prefix Welltap -skip_fixed_cells
+
+
+################ CHECKS AFTER POWERPLAN ################3
+check_pg_drc
+check_pg_missing_vias
+check_pg_connectivity
+
+########ADDING IO BUFFERS in the design #########################33
+#get the buffer freom the library  -----   get_lib_cells *BUFFD8*
+#excluding clk and spi_clk ports from the design because  they are clock ports and does not need the good transition 
+add_buffer -new_cell_names io_bufferadd -lib_cell tcbn28hpcplusbwp30p140hvt/BUFFD8BWP30P140HVT [remove_from_collection [get_ports] {clk spi_clk}]
+
+###### placed io buffers are logically connected with the ports physical connection is done after routing 
+# io_buffers are placed out side of the core to place inside the core and near to the io ports use the below command 
+magnet_placement  [get_ports] -cells io_bufferadd*
+#As the placed io buffers are not disturbed during placement(place_opt) so we set dont_touch to the cells 
+set_dont_touch [get_cells io_bufferadd*]
+
+#report_cells io_bufferadd*
+#get_attribute [get_cells io_bufferadd*] physical_status  --to get the physical ststus of placed cells (PLACED)
+#set_attribute [get_cells io_bufferadd*] dont_touch false/true
+#
+
+
+#####################################     PLACEMENT     #############################
+
+
+/home/deva/rockley/PNR_hfreq/scripts/rp_top.sdc
