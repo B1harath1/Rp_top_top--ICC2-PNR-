@@ -37,6 +37,7 @@ create_boundary_cells -left_boundary_cell tcbn28hpcplusbwp30p140hvt/BOUNDARY_LEF
 
 ####   PLACING the TAP_CELLS   ###########################
 create_tap_cells -lib_cell TAPCELLBWP30P140 -distance 30 -no_1x -pattern stagger -prefix Welltap -skip_fixed_cells
+#################################################################################
 
 #CREATING THE PIN GUIDE AND PLACING THE PINS 
 create_pin_guide -name in -boundary {{386 0} {637 9.8}} [get_ports -filter "direction==in"]
