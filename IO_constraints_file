@@ -1,0 +1,101 @@
+#               : output constraints to reduce the prop delay from registers to their pins [expect turn around prop delay is 5 ns]
+# worst case    : miso will go out after 2ns + 20.84ns x2 + 3ns (46.84ns) after rising edge of SPI clock.  This will give 62.5 - 46.68 = 15.82ns margin for micro to latch the data on miso port.
+# best case     : miso will go out after 2ns + 20.84ns x2 + 3 ns (25.84ns) after rising edge of SPI clock.  This will give 62.5 - 25.84 = 36.66ns margin for micro to latch the data on miso port.
+set_max_delay -from [get_ports {spi_clk}]                      -to [get_pins {spi_slave0_spi_clk_q_reg/D} ] 2.000
+set_max_delay -from [get_ports {spi_mosi}]                     -to [get_pins {spi_slave0_spi_mosi_q_reg/D}] 2.000
+set_max_delay -from [get_ports {spi_sen}]                      -to [get_pins {spi_slave0_spi_sen_q_reg/D} ] 2.000
+set_max_delay -from [get_pins {spi_slave0_data_out_reg_31/CP}] -to [get_ports spi_miso]                     3.000
+
+# DMUX [up to 3.0 ns skew between 4 DMUX pins]
+set_max_delay -from [get_clocks clk] -to [get_ports {dmux0}]          3.0
+set_max_delay -from [get_clocks clk] -to [get_ports {dmux1}]          3.0
+set_max_delay -from [get_clocks clk] -to [get_ports {dmux2}]          3.0
+set_max_delay -from [get_clocks clk] -to [get_ports {jtag_tdo_dmux3}] 3.0
+set_false_path -to  [get_ports {dmux_0_2_out_en}]
+
+# Interrupt [don't really care when interrupt goes out respective to clock]
+set_false_path -to   [get_ports {prg_int_out}]
+
+# Analog signals [timing isn't too critical on all signals as long as they are within few nanoseconds of their associated signals]
+set_max_delay -from [get_clocks clk] -to [get_ports {tia_enhc[*]}]        3.0
+set_max_delay -from [get_clocks clk] -to [get_ports {tia_gain_ctrl[*]}]   3.0
+set_max_delay -from [get_clocks clk] -to [get_ports {tia_off_dac[*]}]     3.0
+set_max_delay -from [get_clocks clk] -to [get_ports {tia_off_cal_clk[*]}] 3.0
+set_max_delay -from [get_ports {tia_off_comp_out[0]}] -to [get_pins {generate_TOC_blocks[0].tia_offset_cancel0_dut_rp_synch_sim_din_d1_reg/D}] 3.0
+set_max_delay -from [get_ports {tia_off_comp_out[1]}] -to [get_pins {generate_TOC_blocks[1].tia_offset_cancel0_dut_rp_synch_sim_din_d1_reg/D}] 3.0
+set_max_delay -from [get_ports {tia_off_comp_out[2]}] -to [get_pins {generate_TOC_blocks[2].tia_offset_cancel0_dut_rp_synch_sim_din_d1_reg/D}] 3.0
+set_max_delay -from [get_ports {tia_off_comp_out[3]}] -to [get_pins {generate_TOC_blocks[3].tia_offset_cancel0_dut_rp_synch_sim_din_d1_reg/D}] 3.0
+
+set_max_delay -from [get_clocks clk] -to [get_ports {adc_rst[*]}] 3.0
+set_max_delay -from [get_clocks clk] -to [get_ports {adc_clk[*]}] 3.0
+set_max_delay -from [get_clocks clk] -to [get_ports {adc_stb[*]}] 3.0
+set_max_delay -from [get_ports {adc_dout[0]}]  -to [get_pins {generate_ADC_blocks[0].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[1]}]  -to [get_pins {generate_ADC_blocks[1].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[2]}]  -to [get_pins {generate_ADC_blocks[2].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[3]}]  -to [get_pins {generate_ADC_blocks[3].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[4]}]  -to [get_pins {generate_ADC_blocks[4].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[5]}]  -to [get_pins {generate_ADC_blocks[5].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[6]}]  -to [get_pins {generate_ADC_blocks[6].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[7]}]  -to [get_pins {generate_ADC_blocks[7].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[8]}]  -to [get_pins {generate_ADC_blocks[8].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[9]}]  -to [get_pins {generate_ADC_blocks[9].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[10]}] -to [get_pins {generate_ADC_blocks[10].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[11]}] -to [get_pins {generate_ADC_blocks[11].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[12]}] -to [get_pins {generate_ADC_blocks[12].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[13]}] -to [get_pins {generate_ADC_blocks[13].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[14]}] -to [get_pins {generate_ADC_blocks[14].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[15]}] -to [get_pins {generate_ADC_blocks[15].rp_adc_postproc_top0_decimator_s1_accum_reg_*/D}] 3.0
+
+set_max_delay -from [get_ports {adc_dout[0]}]   -to [get_pins {generate_ADC_blocks[0].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[1]}]   -to [get_pins {generate_ADC_blocks[1].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[2]}]   -to [get_pins {generate_ADC_blocks[2].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[3]}]   -to [get_pins {generate_ADC_blocks[3].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[4]}]   -to [get_pins {generate_ADC_blocks[4].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[5]}]   -to [get_pins {generate_ADC_blocks[5].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[6]}]   -to [get_pins {generate_ADC_blocks[6].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[7]}]   -to [get_pins {generate_ADC_blocks[7].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[8]}]   -to [get_pins {generate_ADC_blocks[8].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[9]}]   -to [get_pins {generate_ADC_blocks[9].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[10]}]  -to [get_pins {generate_ADC_blocks[10].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[11]}]  -to [get_pins {generate_ADC_blocks[11].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[12]}]  -to [get_pins {generate_ADC_blocks[12].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[13]}]  -to [get_pins {generate_ADC_blocks[13].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[14]}]  -to [get_pins {generate_ADC_blocks[14].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+set_max_delay -from [get_ports {adc_dout[15]}]  -to [get_pins {generate_ADC_blocks[15].rp_adc_clk_ctrl_top0_test_data_reg_*/D}] 3.0
+
+set_max_delay -from [get_clocks clk] -to [get_ports {lan_en[*]}]          4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {dac_las_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {las_n_led}]          4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {lcat_en[*]}]         4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {hga_sel[*]}]         4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {hgc_sel[*]}]         4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {dac_htr_las_sel[*]}] 4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d1mzisw_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d2mzisw_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d3mzisw_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d4mzisw_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d1mzilw_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d2mzilw_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d3mzilw_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d4mzilw_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d1_opa[*]}]          4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d2_opa[*]}]          4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d3_opa[*]}]          4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {d4_opa[*]}]          4.0
+
+set_max_delay -from [get_clocks clk] -to [get_ports {itrim_tx[*]}]        4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {pd_tx_n[*]}]         4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {itrim_rx[*]}]        4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {pd_rx_n[*]}]         4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {bypass_tia}]         4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {en_amux_output[*]}]  4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {afe_mux_sel[*]}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {bypass_wlm_afe}]     4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {bypass_ts_afe}]      4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {alg_amux_sel[*]}]    4.0
+set_max_delay -from [get_clocks clk] -to [get_ports {alg_dmux_sel[*]}]    4.0
+set_max_delay -from [get_ports {alg_dmux[0]}] -to [get_pins {analog_config_top0_test_data_reg_0/D}] 3.0
+set_max_delay -from [get_ports {alg_dmux[1]}] -to [get_pins {analog_config_top0_test_data_reg_1/D}] 3.0
+set_max_delay -from [get_ports {alg_dmux[2]}] -to [get_pins {analog_config_top0_test_data_reg_2/D}] 3.0
+set_max_delay -from [get_ports {alg_dmux[3]}] -to [get_pins {analog_config_top0_test_data_reg_3/D}] 3.0
+set_false_path -from [get_ports {watchdog_active}]
