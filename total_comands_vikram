@@ -1,0 +1,293 @@
+
+################################### INITIALIZATION ######################################
+
+create_lib orca -ref_libs "/proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_1p9m_tech.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_hvt_lsdn.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_hvt_lsup.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_hvt_physical_only.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_hvt_std.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_lvt_lsdn.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_lvt_lsup.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_lvt_physical_only.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_lvt_std.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_rvt_lsdn.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_rvt_lsup.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_rvt_physical_only.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_rvt_std.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_SRAMLP2RW32x4.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_SRAMLP2RW64x8.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_SRAMLP2RW64x32.ndm /proj1/pd/users/mchandrika/C/orca/ref/saed32_ndm/saed32_SRAMLP2RW128x16.ndm " -technology /proj1/pd/users/mchandrika/C/orca/ref/tech/saed32nm_1p9m_mw.tf
+read_verilog {/proj1/pd/users/mchandrika/C/orca/ref/ORCA_TOP_design_data/ORCA_TOP.v }
+
+set_attribute -objects [get_layers {M1 M3 M5 M7 M9}] -name routing_direction -value horizontal
+set_attribute -objects [get_layers {M2 M4 M6 M8 MRDL}] -name routing_direction -value vertical
+initialize_floorplan -control_type core -core_utilization 0.7 -shape R -orientation N -side_ratio {1.0 1.0} -core_offset {0 0} -flip_first_row true  -coincident_boundary true
+#initialize_floorplan -control_type die -core_offset 100 -boundary { {0 0} {0 3000} {1000 3000} {1000 2000} {2000 2000} {2000 3000} {3000 3000} {3000 0} {2000 0} {2000 1000} {1000 1000} {1000 0} }
+set macro_cells [get_cells -physical_context -filter "is_hard_macro &&! is_physical_only" -quiet ]
+set_macro_constraints -allowed_orientations {R0 R180} $macro_cells
+set_macro_constraints -align_pins_to_tracks $macro_cells
+report_macro_constraints -align_pins_to_tracks
+
+
+################################# MACRO PLACEMENT #######################################
+
+#CDR
+
+set_app_options -list {place.coarse.cong_restruct_ungroup  true}
+set_app_options -list { place.coarse.cong_restruct_effort high}
+#pin placement
+place_pins -self
+
+create_placement -floorplan
+set macro_cells [get_cells -physical_context -filter "is_hard_macro &&! is_physical_only" -quiet ]
+set_placement_status fixed $macro_cells
+
+
+reset_placement -spread_cells
+
+set macro_cells [get_cells -physical_context -filter "is_hard_macro &&! is_physical_only" -quiet ]
+set_macro_constraints -allowed_orientations {R0 R180} -align_pins_to_tracks $macro_cells
+create_keepout_margin -type hard -tracks_per_macro_pin 0.5 $macro_cells
+
+#checks
+report_design -floorplan
+check_design -checks pre_placement_stage
+report_qor
+report_constraints
+
+
+################################# PG ######################################################
+
+
+create_net -power VDD
+create_net -ground VSS
+connect_pg_net -net VDD [get_pins -physical_context *VDD]
+connect_pg_net -net VSS [get_pins -physical_context *VSS]
+#Metal stripes
+create_pg_mesh_pattern pg1 -layers {{{horizontal_layer: M9} {width: 0.48} {pitch: 9.728} {spacing: 4.384} {offset: 2.432}} {{vertical_layer: M8} {pitch: 4.864} {width: 0.168} {spacing: 2.264} {offset: 1.216}}}
+set_pg_strategy pg2 -core -pattern {{name: pg1} {nets: VDD VSS}}
+compile_pg -strategies pg2
+#Metal 1
+create_pg_std_cell_conn_pattern pg3 -layers {M1}
+set_pg_strategy pg4 -core -pattern {{name: pg3} {nets: VDD VSS}}
+compile_pg -strategies pg4
+
+#checks
+
+check_design -checks pre_placement_stage > ../reports/pre_place
+check_design -checks physical_constraints > ../reports/phy_const
+check_mv_design > ../reports/mv_des
+save_block -as floorplan
+
+
+################################ PREPLACE CELLS ############################################
+
+#preplace cells
+get_lib_cells */*FILL*
+create_boundary_cells -right_boundary_cell saed32_lvt_std/SHFILL1_LVT -left_boundary_cell saed32_lvt_std/SHFILL1_LVT -top_boundary_cells saed32_lvt_std/SHFILL1_LVT -bottom_boundary_cells saed32_lvt_std/SHFILL1_LVT
+create_tap_cells -distance 50 -pattern stagger -lib_cell saed32_lvt_std/SHFILL1_LVT
+
+#setting min and max routing layer
+set_ignored_layers -min_routing_layer M2 -max_routing_layer M6
+set tie_cells [get_lib_cells "*/*TIE*"]
+set_lib_cell_purpose -include optimization [get_lib_cells $tie_cells]
+set_dont_touch [get_lib_cells $tie_cells] false
+set_app_options -list {opt.tie_cell.max_fanout 8}
+set_dont_touch [get_lib_cells "*/*BUFFX32*"] true
+set_dont_touch [get_lib_cells "*/*BUFFX1*"] true
+set_dont_touch [get_lib_cells "*/*BUFX1_*"] true
+set_threshold_voltage_group_type -type low_vt saed32cell_lvt
+set_threshold_voltage_group_type -type high_vt saed32cell_hvt
+set_threshold_voltage_group_type -type normal_vt saed32cell_svt
+
+read_def ../ref/ORCA_TOP_design_data/ORCA_TOP.scandef
+source ../scripts/mmmc.tcl
+current_scenario
+remove_ideal_network -all
+
+
+################################## PLACEMENT ###############################################
+
+#congestion focused setup steps
+set_app_options -name place.coarse.spread_repeater_paths -value true
+set_app_options -list {place_opt.initial_place.effort high place_opt.final_place.effort high place_opt.congestion.effort high}
+place_opt -to initial_drc
+route_global -congestion_map_only true -effort_level high
+report_congestion
+#change_selection [get_flat_cells I_SDRAM_TOP/*]
+#set_app_options -name place_opt.initial_drc.global_route_based -value 1
+place_opt -to initial_drc
+report_congestion
+#timing focused setup steps
+set_app_options -list {place_opt.initial_place.effort high place_opt.final_place.effort high opt.timing.effort high}
+place_opt -from initial_opto -to initial_opto
+report_timing
+set_app_options -list {place.coarse.tns_driven_placement true}
+#The two-pass flow performs wirelength-driven placement,followed by DRC fixing and another timing-driven placement.
+set_app_options -list {place_opt.initial_place.two_pass true}
+place_opt -to initial_opto
+report_timing
+place_opt -from final_place
+#checks
+report_congestion
+report_timing
+report_qor
+check_legality
+report_constraints
+refine_opt
+report_congestion
+report_timing
+report_qor
+report_timing -report_by scenario
+save_block -as placement
+
+
+################################# CTS ####################################################
+
+
+#to set the primary corner
+set_app_options -list {cts.compile.primary_corner ff_125c}
+# tool chooses the source latencies of the clocks
+set_app_options -list {cts.balance_groups.balance_by_source_latency true} 
+#source latency defined on the clocks is ignored  (de:false)
+set_app_options -list {cts.balance_groups.honor_source_latency true }  
+#balance_clock_groups
+#to remove pre-existing clock buffers  (de: false)
+set_app_options -name cts.compile.remove_existing_clock_trees -value true 
+#to remove only buffers and inverters inserted by tool
+remove_clock_trees -clock_repeaters_only  
+#When you enable local skew optimization using the previous settings, by default, the tool derives skew targets that help improve the timing QoR
+set_app_options -list {cts.compile.enable_local_skew true}
+set_app_options -list {cts.optimize.enable_local_skew true}
+#To prevent the tool from deriving skew targets
+set_app_options -list {cts.common.enable_auto_skew_target_for_local_skew false}
+set_freeze_ports -clock [get_cells I2] true
+#Using the Global Router During Initial Clock Tree Synthesis
+cts.compile.enable_global_route true
+#To prevent the creation of additional clock ports on hierarchical cells
+set_freeze_ports -clock [get_cells I2] true
+#Using the Global Router During Initial Clock Tree Synthesis
+cts.compile.enable_global_route true
+#pre requisities fot cts
+check_design -checks pre_clock_tree_stage
+check_clock_trees
+#current scenario
+current_scenario func.ff_125c
+set_lib_cell_purpose -exclude cts [get_lib_cells]
+set_lib_cell_purpose -include hold [get_lib_cells "*/NBUFFX4_HVT */NBUFFX16_HVT */NBUFFX8_HVT"]
+set_lib_cell_purpose -include cts [get_lib_cells {saed32_lvt_std/TNBUFFX16_LVT */INVX4_LVT */INVX0_LVT saed32_lvt_std/AO22X*_LVT saed32_lvt_std/MUX21X*_LVT saed32_rvt_std/SDFFX*_RVT saed32_hvt_std/AND2X*_HVT saed32_hvt_std/DFFARX*_HVT saed32_hvt_std/SDFFNARX*_HVT saed32_lvt_lsup/LSUPX*_LVT  saed32_lvt_std/NBUFFX8_LVT saed32_lvt_std/SDFFNX*_LVT */NBUFFX2_LVT */NBUFFX4_HVT saed32_lvt_std/NBUFFX16_LVT saed32_lvt_std/CGLPPRX*_LVT saed32_lvt_std/DFFNARX*_LVT saed32_lvt_std/AOI22X*_LVT saed32_lvt_std/CGLNPRX*_LVT saed32_rvt_std/SDFFARX*_RVT saed32_lvt_std/NBUFFX4_LVT saed32_lvt_std/IBUFFX32_LVT saed32_lvt_std/IBUFFX16_LVT saed32_lvt_std/LATCHX*_LVT saed32_lvt_std/IBUFFX4_LVT saed32_lvt_std/SDFFASX*_LVT saed32_lvt_std/DFFX*_LVT saed32_lvt_std/DFFNX*_LVT }]
+set_max_transition 0.2 -clock_path [get_clocks SYS_2x_CLK]
+set_max_transition 0.2 -clock_path [get_clocks PCI_CLK]
+set_max_transition 0.2 -clock_path [get_clocks SDRAM_CLK]
+set_max_capacitance 0.3 -clock_path [get_clocks SYS_2x_CLK]
+set_max_capacitance 0.3 -clock_path [get_clocks PCI_CLK]
+set_max_capacitance 0.3 -clock_path [get_clocks SDRAM_CLK]
+set_clock_tree_options -target_skew 0.08 -clocks [get_clocks SYS_2x_CLK]
+set_clock_tree_options -target_skew 0.1 -clocks [get_clocks PCI_CLK]
+set_clock_tree_options -target_skew 0.08 -clocks [get_clocks SDRAM_CLK]
+set_clock_tree_options -target_latency 0.1 -clocks [get_clocks SYS_2x_CLK]
+set_clock_tree_options -target_latency 0.1 -clocks [get_clocks PCI_CLK]
+set_clock_tree_options -target_latency 0.1 -clocks [get_clocks SDRAM_CLK]
+#to help setup timing closure
+set_app_options -list {clock_opt.flow.enable_ccd true}
+#control the effort of hold fixing
+set_app_options -name clock_opt.hold.effort -value high
+#to remove pessimism
+set_app_options -name time.remove_clock_reconvergence_pessimism -value true
+#NDRs
+create_routing_rule 2W2S  -multiplier_width 2 -multiplier_spacing 2
+set_clock_routing_rules -net_type root -rules 2W2S -max_routing_layer M7 -min_routing_layer M6
+set_clock_routing_rules -net_type internal -rules 2W2S -max_routing_layer M5 -min_routing_layer M4
+set_clock_routing_rules  -net_type sink -rules 2W2S -max_routing_layer M3 -min_routing_layer M2
+#to remove pre-existing clock buffers  
+set_app_options -list {cts.compile.remove_existing_clock_trees false}
+#to increase the congestion effort
+set_app_options -list {clock_opt.congestion.effort high}
+#to increase the placement effort
+set_app_options -list {clock_opt.place.effort high} 
+#enable ndr promotion
+set_app_options -list {cts.optimize.enable_congestion_aware_ndr_promotion true}
+#minimize the hold time violations in scan paths
+set_app_options -list {opt.dft.clock_aware_scan true}  
+clock_opt -to build_clock
+#detail router uses the existing clock global routes, which ensures better correlation
+route_group -all_clock_nets -reuse_existing_global_route true
+report_qor -summary
+clock_opt -from route_clock -to route_clock
+clock_opt -from final_opto
+#checks
+report_clock_timing -type summary
+report_clock_timing -type skew -include_uncertainty_in_skew
+report_clock_qor
+report_qor
+report_timing -delay_type min -scenarios func.ff_125c
+report_timing -delay_type max
+compute_clock_latency
+#to report tran and cap
+report_clock_settings 
+
+
+################################### POST_CTS ##############################################################
+
+
+#set_app_options -list { clock_opt.flow.enable_global_route_opt true }
+#clock_opt -from global_route_opt
+synthesize_clock_trees -postroute -routed_clock_stage detail
+#without latency updating
+synthesize_clock_trees -propagate_only 
+report_timing -delay_type max
+report_timing -delay_type min -scenarios func.ff_125c
+report_qor
+report_congestion
+save_block -as post_cts
+
+
+######################################## ROUTE ################################################################
+
+#pre requisities for routing
+check_design -checks pre_route_stage
+check_routability
+set_app_options -list { route.global.timing_driven true route.track.timing_driven true  route.detail.timing_driven true  }
+set_app_options -list { route.global.timing_driven_effort_level medium}
+set_app_options -list { time.si_enable_analysis true}
+set_app_options -list {route.global.crosstalk_driven false route.track.crosstalk_driven true }
+# routing performs global routing, track assignment and detail routing
+route_auto
+#checks
+check_routes
+check_pg_drc
+report_qor
+check_lvs -open_reporting detailed -check_child_cells true -max_errors 0
+report_timing -delay_type min
+report_timing -delay_type min -scenarios func.ff_125c
+report_timing -delay_type max
+report_congestion
+#enable wire and via optimization
+optimize_routes
+set_app_options -list {route.detail.repair_shorts_over_macros_effort_level medium}
+check_lvs -open_reporting detailed -check_child_cells true -max_errors 0
+route_detail -incremental true
+#to help setup timing closure
+set_app_options -list {route_opt.flow.enable_ccd true}
+
+
+########################################## ROUTE_OPT ###########################################################
+
+
+#to help setup timing closure
+set_app_options -list {route_opt.flow.enable_ccd true}
+#to enable routing-based crosstalk reduction:
+set_app_options -name route_opt.xtalk_reduction -value true
+#to perform post_route CTO after route_opt
+synthesize_clock_trees -postroute -routed_clock_stage detail_with_signal_routes
+#step1:
+route_opt
+report_qor
+report_congestion
+report_timing
+report_timing -delay_type min
+report_timing -delay_type max
+check_lvs -open_reporting detailed -check_child_cells true -max_errors 0
+set_app_options -list {route.detail.eco_route_use_soft_spacing_for_timing_optimization false}
+#step2:
+route_opt
+set_app_options -list {route_opt.flow.enable_ccd false route_opt.flow.enable_cto false route_opt.flow.enable_power true route_opt.flow.size_only_mode equal }
+check_lvs -open_reporting detailed -check_child_cells true -max_errors 0
+report_qor
+report_congestion
+report_timing -delay_type min
+report_timing -delay_type max
+#step3:
+route_opt
+#checks
+report_timing -delay_type max
+report_timing -delay_type min
+report_congestion
+report_qor
+check_lvs -max_errors 0 -open_reporting detailed -check_child_cells true
+save_block -as route
