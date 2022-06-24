@@ -1,0 +1,26 @@
+#@ # 
+#@ # Running fc_shell Version S-2021.06-SP4 for linux64 -- Nov 25, 2021
+#@ # Date:   Tue Mar  8 21:58:05 2022
+#@ # Run by: deva@narmada
+#@ 
+
+set_host_options -max_cores 8
+open_lib ./rp_top_top.ndm
+start_gui
+gui_set_pref_value -category {SelectByNamePalette} -key {ObjectType} -value {Logical Cells}
+list_blocks
+open_block design_init.design
+link_block
+win_set_filter -visible -class cell -filter {hard_macro_margin hard_margin route_blockage_margin soft_margin}
+win_set_filter -visible -class pseudo_bump -filter {deleted}
+win_set_filter -visible -class placement_blockage -filter {wiring} -layer {0-31}
+win_set_filter -expand_cell_types {soft_macro  }
+win_set_select_class -visible {cell port bound routing_blockage shaping_blockage pg_region bump_region pseudo_bump pin_blockage block_shielding topology_node topology_edge topology_repeater annotation_shape core_area die_area edit_group shape via terminal fill_cell placement_blockage }
+win_set_filter -class cell -filter {array hard_macro_margin hard_margin route_blockage_margin soft_margin}
+win_set_filter -class pseudo_bump -filter {deleted}
+win_set_filter -class placement_blockage -filter {wiring} -layer {0-31}
+win_set_select_class {cell port bound routing_blockage shaping_blockage pg_region bump_region pseudo_bump pin_blockage topology_node topology_edge topology_repeater annotation_shape edit_group shape via placement_blockage }
+set_attribute [get_layers {M1 M3 M5 M7 M9}] routing_direction vertical
+set_attribute [get_layers {M2 M4 M6 M8 AP}] routing_direction horizontal
+initialize_floorplan -control_type die -core_offset "1.48 2.2 1.48 2.2" -core_utilization 0.65
+exit
