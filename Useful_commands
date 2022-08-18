@@ -7,6 +7,7 @@ get_app_options
 report_app_option *tie*    ### to report the app_options 
 
 list_attributes -class <> -application     ### to get the attributes 
+list_attributes -class cell -application
 
 get_attributes [geta_layers M1] routing_direction   ## to get the direction of the metal layer
 get_ports -filter "direction==in"   ####to get the port direction 
