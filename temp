@@ -1,0 +1,42 @@
+if {$argc < 1} {
+	puts "ERROR: REPORT NOT SPECIFIED"
+	exit
+}
+
+set file1 [lindex $argv 0]
+set file2 [lindex $argv 1]
+#set file1_inst_index [exec grep "Pins\|Instance" $file1]
+#set file2_inst_index [lindex [lsearch [exec grep "Pins\|Instance" $file2] "Instance"]]
+set list1 [exec awk -F "|" {{print $4}} $file1 | awk {NF} | awk {NF && $0 !~ /Instance/}]
+set list2 [exec awk -F "|" {{print $4}} $file2 | awk {NF} | awk {NF && $0 !~ /Instance/}]
+
+array set dict1 {}
+array set dict2 {}
+
+foreach item $list1 {
+    set dict1($item) 1
+}
+foreach item $list2 {
+    set dict2($item) 1
+}
+set common {}
+foreach item $list1 {
+    if {[info exists dict2($item)]} {
+        lappend common $item
+    }
+}
+set not_common_list1 {}
+foreach item $list1 {
+    if {![info exists dict2($item)]} {
+        lappend not_common_list1 $item
+    }
+}
+set not_common_list2 {}
+foreach item $list2 {
+    if {![info exists dict1($item)]} {
+        lappend not_common_list2 $item
+    }
+}
+puts "Common elements: $common"
+puts "Not common in list1: $not_common_list1"
+puts "Not common in list2: $not_common_list2"
