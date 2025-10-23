@@ -41,33 +41,6 @@ puts "Common elements: $common"
 puts "Not common in list1: $not_common_list1"
 puts "Not common in list2: $not_common_list2"
 ###############################################################
-if {$argc < 1} {
-	puts "ERROR: REPORT NOT SPECIFIED"
-	exit
-}
-set file1 [lindex $argv 0]
-set file2 [lindex $argv 1]
-
-set checks {"Unresolved References" "Empty Modules" "Unloaded Port" "Unloaded Sequential Pin" "Unloaded Combinational Pin" "Assigns" "Undriven Port" "Undriven Leaf Pin" "Undriven hierarchical pin" "Multidriven Port" "Multidriven Leaf Pin" "Multidriven hierarchical Pin" "Multidriven unloaded net" "Constant Port" "Constant Leaf Pin" "Constant hierarchical Pin" "Preserved leaf instance" "Preserved hierarchical instance" "Feedthrough Modules " "Libcells with no LEF cell" "Physical (LEF) cells with no libcell" "Subdesigns with long module name" "Physical only instance" "Logical only instance"}
-set afile1 [string cat [lindex [splir $file1 "/"] end] "_" "only_present"]
-set afile2 [string cat [lindex [splir $file2 "/"] end] "_" "only_present"]
-set fp [open "$afile1" w]
-set gp [open "$afile2" w]
-foreach check $checks {
-	if {$check eq "Unresolved References"} {
-		set num1 [grep -B 28 "Done Checking the design." $file1 | grep "Unresolved References" | awk {{print $NF}}]
-		set num2 [grep -B 28 "Done Checking the design." $file2 | grep "Unresolved References" | awk {{print $NF}}]
-		set ur_file1 [exec sh -c [subst "grep -A $num 'following unresolved references' $file1 | grep 'hinst:'"]]
-		set ur_file2 [exec sh -c [subst "grep -A $num 'following unresolved references' $file2 | grep 'hinst:'"]]
-		puts $fp "unresolved references\n----------------------"
-		puts $gp "unresolved references\n----------------------"
-		diff $ur_file1 $ur_file2 $fp $gp
-	}
-	
-}
-
-
-
 proc diff {list1 list2 fp gp} {
 	array set dict1 {}
 	array set dict2 {}
@@ -99,4 +72,103 @@ proc diff {list1 list2 fp gp} {
 #puts "Common elements: $common"
 puts $fp [join $not_common_list1 "\n"]
 puts $gp [join $not_common_list2 "\n"]
+}
+if {$argc < 1} {
+	puts "ERROR: REPORT NOT SPECIFIED"
+	exit
+}
+set file1 [lindex $argv 0]
+set file2 [lindex $argv 1]
+
+set checks {"Unresolved References" "Empty Modules" "Unloaded Port" "Unloaded Sequential Pin" "Unloaded Combinational Pin" "Assigns" "Undriven Port" "Undriven Leaf Pin" "Undriven hierarchical pin" "Multidriven Port" "Multidriven Leaf Pin" "Multidriven hierarchical Pin" "Multidriven unloaded net" "Constant Port" "Constant Leaf Pin" "Constant hierarchical Pin" "Preserved leaf instance" "Preserved hierarchical instance" "Feedthrough Modules " "Libcells with no LEF cell" "Physical (LEF) cells with no libcell" "Subdesigns with long module name" "Physical only instance" "Logical only instance"}
+set afile1 [string cat [lindex [split $file1 "/"] end] "_" "only_present"]
+set afile2 [string cat [lindex [split $file2 "/"] end] "_" "only_present"]
+set fp [open "$afile1" w]
+set gp [open "$afile2" w]
+foreach check $checks {
+	if {$check == "Unresolved References"} {
+		set num1 [exec cat $file1 | grep -B 28 "Done Checking the design." | grep "Unresolved References" | awk {{print $NF}}]
+		set num2 [exec cat $file2 | grep -B 28 "Done Checking the design." | grep "Unresolved References" | awk {{print $NF}}]
+		puts $fp "unresolved references\n----------------------"
+		puts $gp "unresolved references\n----------------------"
+		if {$num1 > 0} {
+		set ur_file1 [exec sh -c [subst "cat $file1 | grep -A $num1 'following unresolved references' | grep 'hinst:'"]]
+		} else {
+		set ur_file1 "No_Unresolved_References"
+		}
+		if {$num2 > 0} {
+		set ur_file2 [exec sh -c [subst "cat $file2 | grep -A $num2 'following unresolved references' | grep 'hinst:'"]]
+		} else {
+		set ur_file2 "No_unresolved_references"
+		}
+		diff $ur_file1 $ur_file2 $fp $gp
+	}
+	if {$check == "Empty Modules"} {
+		set num1 [exec cat $file1 | grep -B 28 "Done Checking the design." | grep "Empty Modules" | awk {{print $NF}}]
+		set num2 [exec cat $file2 | grep -B 28 "Done Checking the design." | grep "Empty Modules" | awk {{print $NF}}]
+		puts $fp "Empty Modules\n----------------------"
+		puts $gp "Empty Modules\n----------------------"
+		if {$num1 > 0} {
+		set ur_file1 [exec sh -c [subst "cat $file1 | grep -A $num1 'following unresolved references' | grep 'hinst:'"]]
+		} else {
+		set ur_file1 "No_Empty_Modules"
+		}
+		if {$num2 > 0} {
+		set ur_file2 [exec sh -c [subst "cat $file2 | grep -A $num2 'following unresolved references' | grep 'hinst:'"]]
+		} else {
+		set ur_file2 "No_empty_modules"
+		}
+		diff $ur_file1 $ur_file2 $fp $gp
+	}
+	if {$check == "Unloaded Port"} {
+		set num1 [exec cat $file1 | grep -B 28 "Done Checking the design." | grep "Unloaded Port" | awk {{print $NF}}]
+		set num2 [exec cat $file2 | grep -B 28 "Done Checking the design." | grep "Unloaded Port" | awk {{print $NF}}]
+		puts $fp "Unloaded Ports\n----------------------"
+		puts $gp "Unloaded Ports\n----------------------"
+		if {$num1 > 0} {
+		set ur_file1 [exec sh -c [subst "cat $file1 | grep -A $num1 'following unresolved references' | grep 'hinst:'"]]
+		} else {
+		set ur_file1 "No_Unloaded_Port"
+		}
+		if {$num2 > 0} {
+		set ur_file2 [exec sh -c [subst "cat $file2 | grep -A $num2 'following unresolved references' | grep 'hinst:'"]]
+		} else {
+		set ur_file2 "No_unloaded_port"
+		}
+		diff $ur_file1 $ur_file2 $fp $gp
+	}
+	if {$check == "Unloaded Sequential Pin"} {
+		set num1 [exec cat $file1 | grep -B 28 "Done Checking the design." | grep "Unloaded Sequential Pin" | awk {{print $NF}}]
+		set num2 [exec cat $file2 | grep -B 28 "Done Checking the design." | grep "Unloaded Sequential Pin" | awk {{print $NF}}]
+		puts $fp "Unloaded Sequential Pin\n----------------------"
+		puts $gp "Unloaded Sequential Pin\n----------------------"
+		if {$num1 > 0} {
+		set ur_file1 [exec sh -c [subst "cat $file1 | grep -A $num1 'following unloaded sequential' | grep 'inst:'"]]
+		} else {
+		set ur_file1 "No_Unloaded_Sequential_Pin"
+		}
+		if {$num2 > 0} {
+		set ur_file2 [exec sh -c [subst "cat $file2 | grep -A $num2 'following unloaded sequential' | grep 'inst:'"]]
+		} else {
+		set ur_file2 "No_unloaded_sequential_pin"
+		}
+		diff $ur_file1 $ur_file2 $fp $gp
+	}
+	if {$check == "Unloaded Combinational Pin"} {
+		set num1 [exec cat $file1 | grep -B 28 "Done Checking the design." | grep "Unloaded Combinational Pin" | awk {{print $NF}}]
+		set num2 [exec cat $file2 | grep -B 28 "Done Checking the design." | grep "Unloaded Combinational Pin" | awk {{print $NF}}]
+		puts $fp "Unloaded Combinational Pin\n----------------------"
+		puts $gp "Unloaded Combinational Pin\n----------------------"
+		if {$num1 > 0} {
+		set ur_file1 [exec sh -c [subst "cat $file1 | grep -A $num1 'following unloaded combinational' | grep 'pin:'"]]
+		} else {
+		set ur_file1 "No_Unloaded_Combinational_Pin"
+		}
+		if {$num2 > 0} {
+		set ur_file2 [exec sh -c [subst "cat $file2 | grep -A $num2 'following unloaded combinational' | grep 'pin:'"]]
+		} else {
+		set ur_file2 "No_unloaded_combinational_pin"
+		}
+		diff $ur_file1 $ur_file2 $fp $gp
+	}
 }
