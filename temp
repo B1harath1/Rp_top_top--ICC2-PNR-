@@ -54,18 +54,21 @@ set afile2 [string cat [lindex [splir $file2 "/"] end] "_" "only_present"]
 set fp [open "$afile1" w]
 set gp [open "$afile2" w]
 foreach check $checks {
-	if {$check eq "unresolved Reference"} {
-		set num [grep -B 28 "Done Checking the design." $file1 | grep "Unresolved References" | awk {{print $NF}}]
-		set ur_file1 [exec grep -A $num "following unresolved references" $file1 | grep "hinst:"]
-		set ur_file2 [exec grep -A $num "following unresolved references" $file2 | grep "hinst:"]
+	if {$check eq "Unresolved References"} {
+		set num1 [grep -B 28 "Done Checking the design." $file1 | grep "Unresolved References" | awk {{print $NF}}]
+		set num2 [grep -B 28 "Done Checking the design." $file2 | grep "Unresolved References" | awk {{print $NF}}]
+		set ur_file1 [exec sh -c [subst "grep -A $num 'following unresolved references' $file1 | grep 'hinst:'"]]
+		set ur_file2 [exec sh -c [subst "grep -A $num 'following unresolved references' $file2 | grep 'hinst:'"]]
+		puts $fp "unresolved references\n----------------------"
+		puts $gp "unresolved references\n----------------------"
+		diff $ur_file1 $ur_file2 $fp $gp
 	}
-	puts $fp "unresolved references\n----------------------"
-	diff ur_file1 ur_file2
+	
 }
 
 
 
-proc diff {list1 list2} {
+proc diff {list1 list2 fp gp} {
 	array set dict1 {}
 	array set dict2 {}
 
